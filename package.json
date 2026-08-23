@@ -1,0 +1,13 @@
+{
+  "name": "clinical-voice-emr-assistant",
+  "version": "1.0.0",
+  "description": "Record doctor-patient conversations, transcribe them, and format them into EMR-ready notes.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>MedTranscription AI Scribe</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="brand-block">
+          <p class="eyebrow">National hospital clinical documentation</p>
+          <h1>MedTranscription AI Scribe</h1>
+          <p class="subtitle">Record, recover, transcribe, and prepare clinician-reviewed EMR documentation.</p>
+        </div>
+
+        <div class="header-actions">
+          <div class="theme-control" role="group" aria-label="Theme preference">
+            <button type="button" data-theme-option="light">Light</button>
+            <button type="button" data-theme-option="dark">Dark</button>
+            <button type="button" data-theme-option="system">System</button>
+          </div>
+          <span class="status-pill" id="modePill">Ready</span>
+        </div>
+      </header>
+
+      <section class="workspace" aria-label="MedTranscription AI Scribe workspace">
+        <section class="capture-panel panel" aria-label="Consultation capture">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Patient context</p>
+              <h2>Consultation Setup</h2>
+            </div>
+            <button class="ghost-button" id="clearWorkspaceBtn" type="button">Clear</button>
+          </div>
+
+          <div class="patient-strip">
+            <label>
+              Patient name
+              <input id="patientName" type="text" placeholder="e.g. Ama Mensah" autocomplete="off" />
+            </label>
+            <label>
+              Patient ID
+              <input id="patientId" type="text" placeholder="e.g. OPD-2048" autocomplete="off" />
+            </label>
+            <label>
+              Visit date
+              <input id="visitDate" type="date" />
+            </label>
+            <label>
+              Referring facility
+              <input id="referringFacility" type="text" placeholder="e.g. Korle Bu Teaching Hospital" autocomplete="off" />
+            </label>
+            <label>
+              Visit type
+              <select id="visitType">
+                <option>Outpatient</option>
+                <option>Emergency</option>
+                <option>Ward review</option>
+                <option>Follow-up</option>
+                <option>Referral</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="recording-hub">
+            <div class="recording-visualizer-container">
+              <canvas id="visualizerCanvas" width="400" height="120"></canvas>
+              <div class="audio-pulse-ring"></div>
+            </div>
+            
+            <div class="recording-details">
+              <div class="timer-display">
+                <span class="timer-dot"></span>
+                <p class="timer" id="timer">00:00</p>
+              </div>
+              <p class="hint" id="statusText">Ask for patient consent, then start recording.</p>
+              
+              <div class="recording-telemetry">
+                <div class="telemetry-item sound-level">
+                  <span class="telemetry-label">Level</span>
+                  <div class="level-meter">
+                    <div class="level-bar" id="volumeBar"></div>
+                  </div>
+                </div>
+                <div class="telemetry-item speech-pill-container">
+                  <span class="status-indicator-pill" id="speechIndicator">Silence</span>
+                </div>
+                <div class="telemetry-item codec-info">
+                  <span id="codecText">Audio: Inactive</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="recording-controls">
+              <button class="record-trigger-btn" id="startBtn" type="button" aria-label="Start recording">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="12" r="9" fill="var(--danger, #ef4444)"/>
+                </svg>
+                <span>Record</span>
+              </button>
+              <button class="record-stop-btn" id="stopBtn" type="button" disabled aria-label="Stop recording">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" fill="var(--ink, #1f2937)"/>
+                </svg>
+                <span>Stop</span>
+              </button>
+            </div>
+          </div>
+
+          <audio class="audio-preview" id="audioPreview" controls hidden></audio>
+
+          <section class="segments-section">
+            <div class="section-head">
+              <div>
+                <h2>Recording Recovery</h2>
+                <p>Saved recordings can be retried if transcription fails.</p>
+              </div>
+              <button class="secondary-button" id="retryFailedBtn" type="button" disabled>Retry failed</button>
+            </div>
+            <div class="empty-state" id="emptySegments">No recordings yet. Completed recordings will appear here.</div>
+            <ol class="segments-list" id="segmentsList"></ol>
+          </section>
+
+          <section class="transcript-section">
+            <div class="section-head">
+              <div>
+                <h2>Combined Transcript</h2>
+                <p>Edit the transcript before generating the final documentation.</p>
+              </div>
+              <div class="inline-actions">
+                <button class="secondary-button" id="copyTranscriptBtn" type="button" disabled>Copy</button>
+                <button class="primary-button" id="reformatBtn" type="button" disabled>Generate note</button>
+              </div>
+            </div>
+            <textarea id="transcript" placeholder="All consultation transcripts will appear here after processing. You can also paste a transcript here and click Generate note."></textarea>
+          </section>
+        </section>
+
+        <aside class="note-panel panel" aria-label="Structured clinical documentation">
+          <div class="panel-head sticky-head">
+            <div>
+              <p class="eyebrow">Structured output</p>
+              <h2>Clinical Documentation Draft</h2>
+            </div>
+            <button class="primary-button" id="copyNoteBtn" type="button" disabled>Copy note</button>
+          </div>
+
+          <div class="review-banner">
+            <div>
+              <strong>Clinician review required</strong>
+              <span>AI-generated notes must be verified before clinical use.</span>
+            </div>
+            <div class="score-card">
+              <span id="completenessScore">0</span>
+              <small>% complete</small>
+            </div>
+          </div>
+
+          <nav class="note-tabs" aria-label="Documentation sections">
+            <button type="button" class="is-active" data-note-tab="overview">Overview</button>
+            <button type="button" data-note-tab="soap">SOAP</button>
+            <button type="button" data-note-tab="history">History</button>
+            <button type="button" data-note-tab="plan">Plan</button>
+            <button type="button" data-note-tab="referral">Referral</button>
+            <button type="button" data-note-tab="safety">Safety</button>
+          </nav>
+
+          <div class="note-sections" id="noteGrid">
+            <section class="note-section is-active" data-note-section="overview">
+              <article class="note-card wide">
+                <h3>Clinical Summary</h3>
+                <textarea class="note-textarea tall" id="clinicalSummary" data-note-field="clinical_summary" placeholder="Not documented."></textarea>
+              </article>
+              <div class="field-grid">
+                <article class="note-card"><h3>Full Name</h3><input class="note-input" id="piFullName" data-pi-field="full_name" type="text" placeholder="Not documented." /></article>
+                <article class="note-card"><h3>Age</h3><input class="note-input" id="piAge" data-pi-field="age" type="text" placeholder="Not documented." /></article>
+                <article class="note-card"><h3>Sex</h3><input class="note-input" id="piSex" data-pi-field="sex" type="text" placeholder="Not documented." /></article>
+                <article class="note-card"><h3>Patient ID</h3><input class="note-input" id="piPatientId" data-pi-field="patient_id" type="text" placeholder="Not documented." /></article>
+                <article class="note-card"><h3>Visit Date</h3><input class="note-input" id="piVisitDate" data-pi-field="visit_date" type="text" placeholder="Not documented." /></article>
+                <article class="note-card"><h3>Referring Facility</h3><input class="note-input" id="piReferringFacility" data-pi-field="referring_facility" type="text" placeholder="Not documented." /></article>
+              </div>
+              <article class="note-card wide">
+                <h3>Patient-Friendly Summary</h3>
+                <textarea class="note-textarea tall" id="patientFriendlySummary" data-note-field="patient_friendly_summary" placeholder="Not documented."></textarea>
+              </article>
+            </section>
+
+            <section class="note-section" data-note-section="soap">
+              <article class="note-card wide"><h3>Subjective</h3><textarea class="note-textarea tall" id="soapSubjective" data-note-field="soap_subjective" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Objective</h3><textarea class="note-textarea tall" id="soapObjective" data-note-field="soap_objective" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Assessment</h3><textarea class="note-textarea tall" id="soapAssessment" data-note-field="soap_assessment" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Plan</h3><textarea class="note-textarea tall" id="soapPlan" data-note-field="soap_plan" placeholder="Not documented."></textarea></article>
+            </section>
+
+            <section class="note-section" data-note-section="history">
+              <article class="note-card wide"><h3>Chief Complaint</h3><textarea class="note-textarea" id="chiefComplaint" data-note-field="chief_complaint" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>History of Present Illness</h3><textarea class="note-textarea tall" id="hpi" data-note-field="history_of_present_illness" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Past Medical History</h3><textarea class="note-textarea" id="pastMedicalHistory" data-note-field="past_medical_history" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Medication History</h3><textarea class="note-textarea" id="medicationHistory" data-note-field="medication_history" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Allergies</h3><textarea class="note-textarea" id="allergies" data-note-field="allergies" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Family History</h3><textarea class="note-textarea" id="familyHistory" data-note-field="family_history" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Social History</h3><textarea class="note-textarea" id="socialHistory" data-note-field="social_history" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Review of Systems</h3><textarea class="note-textarea" id="reviewOfSystems" data-note-field="review_of_systems" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Physical Examination</h3><textarea class="note-textarea" id="physicalExam" data-note-field="physical_examination_findings" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Assessment Narrative</h3><textarea class="note-textarea" id="assessment" data-note-field="assessment" placeholder="Not documented."></textarea></article>
+            </section>
+
+            <section class="note-section" data-note-section="plan">
+              <article class="note-card wide"><h3>Plan</h3><textarea class="note-textarea" id="plan" data-note-field="plan" placeholder="Not documented."></textarea></article>
+              <article class="note-card"><h3>Differential Diagnoses</h3><ul class="editable-list" id="differentials" data-list-field="differential_diagnoses"></ul><div class="add-row"><input id="differential_diagnosesInput" type="text" placeholder="Add differential" /><button type="button" data-add-list="differential_diagnoses">Add</button></div></article>
+              <article class="note-card"><h3>Clinical Impressions</h3><ul class="editable-list" id="clinicalImpressions" data-list-field="clinical_impressions"></ul><div class="add-row"><input id="clinical_impressionsInput" type="text" placeholder="Add impression" /><button type="button" data-add-list="clinical_impressions">Add</button></div></article>
+              <article class="note-card"><h3>Investigations</h3><ul class="editable-list" id="investigations" data-list-field="investigations"></ul><div class="add-row"><input id="investigationsInput" type="text" placeholder="Add investigation" /><button type="button" data-add-list="investigations">Add</button></div></article>
+              <article class="note-card"><h3>Medications</h3><ul class="editable-list" id="medications" data-list-field="medications"></ul><div class="add-row"><input id="medicationsInput" type="text" placeholder="Add medication" /><button type="button" data-add-list="medications">Add</button></div></article>
+              <article class="note-card"><h3>Referrals</h3><ul class="editable-list" id="referrals" data-list-field="referrals"></ul><div class="add-row"><input id="referralsInput" type="text" placeholder="Add referral" /><button type="button" data-add-list="referrals">Add</button></div></article>
+              <article class="note-card wide"><h3>Follow-up Instructions</h3><textarea class="note-textarea" id="followUpInstructions" data-note-field="follow_up_instructions" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Follow-up Recommendations</h3><ul class="editable-list" id="followUpRecommendations" data-list-field="follow_up_recommendations"></ul><div class="add-row"><input id="follow_up_recommendationsInput" type="text" placeholder="Add recommendation" /><button type="button" data-add-list="follow_up_recommendations">Add</button></div></article>
+            </section>
+
+            <section class="note-section" data-note-section="referral">
+              <article class="note-card wide"><h3>Referral Summary</h3><textarea class="note-textarea" id="referralSummary" data-note-field="referral_summary" placeholder="Not documented."></textarea></article>
+              <article class="note-card"><h3>Referral Reason</h3><textarea class="note-textarea" id="referralReason" data-note-field="referral_reason" placeholder="Not documented."></textarea></article>
+              <article class="note-card"><h3>Referral Urgency</h3><textarea class="note-textarea" id="referralUrgency" data-note-field="referral_urgency" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Supporting Findings</h3><textarea class="note-textarea" id="referralSupportingFindings" data-note-field="referral_supporting_findings" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Referral Letter</h3><textarea class="note-textarea tall" id="referralLetter" data-note-field="referral_letter" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Patient Instructions</h3><textarea class="note-textarea tall" id="patientInstructions" data-note-field="patient_instructions" placeholder="Not documented."></textarea></article>
+              <article class="note-card wide"><h3>Medication Guidance</h3><textarea class="note-textarea" id="medicationGuidance" data-note-field="medication_guidance" placeholder="Not documented."></textarea></article>
+            </section>
+
+            <section class="note-section" data-note-section="safety">
+              <article class="note-card risk-card"><h3>Risk Alerts</h3><ul class="editable-list" id="riskAlerts" data-list-field="risk_alerts"></ul><div class="add-row"><input id="risk_alertsInput" type="text" placeholder="Add risk alert" /><button type="button" data-add-list="risk_alerts">Add</button></div></article>
+              <article class="note-card risk-card"><h3>Clinical Risk Flags</h3><ul class="editable-list" id="clinicalRiskFlags" data-list-field="clinical_risk_flags"></ul><div class="add-row"><input id="clinical_risk_flagsInput" type="text" placeholder="Add risk flag" /><button type="button" data-add-list="clinical_risk_flags">Add</button></div></article>
+              <article class="note-card"><h3>Medication Safety Flags</h3><ul class="editable-list" id="medicationSafetyFlags" data-list-field="medication_safety_flags"></ul><div class="add-row"><input id="medication_safety_flagsInput" type="text" placeholder="Add safety flag" /><button type="button" data-add-list="medication_safety_flags">Add</button></div></article>
+              <article class="note-card"><h3>Warning Signs</h3><ul class="editable-list" id="warningSigns" data-list-field="warning_signs"></ul><div class="add-row"><input id="warning_signsInput" type="text" placeholder="Add warning sign" /><button type="button" data-add-list="warning_signs">Add</button></div></article>
+              <article class="note-card wide"><h3>Suggested ICD-10 Codes</h3><ul class="editable-list" id="icd10Suggestions" data-list-field="icd10_suggestions"></ul><div class="add-row"><input id="icd10_suggestionsInput" type="text" placeholder="Add ICD-10 code" /><button type="button" data-add-list="icd10_suggestions">Add</button></div></article>
+              <article class="note-card wide"><h3>ICD-10 Disclaimer</h3><textarea class="note-textarea" id="icd10Disclaimer" data-note-field="icd10_disclaimer" placeholder="Suggested codes only. Final coding must be reviewed by a qualified clinician."></textarea></article>
+              <article class="note-card wide"><h3>Missing Information</h3><ul class="editable-list" id="missingInformation" data-list-field="missing_information"></ul><div class="add-row"><input id="missing_informationInput" type="text" placeholder="Add missing item" /><button type="button" data-add-list="missing_information">Add</button></div></article>
+            </section>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
