@@ -8,7 +8,7 @@ This MVP records doctor-patient conversation segments in the browser, sends each
 npm start
 ```
 
-Open `http://localhost:3000`.
+Open https://medical-transcribe-mauve.vercel.app
 
 The app works in demo mode without an API key. To use live transcription and AI note formatting:
 
